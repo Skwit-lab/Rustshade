@@ -1,0 +1,24 @@
+# rustshade default preset
+# Apply: rustshade apply -i input.png -o output.png -p preset.toml
+
+[[effects]]
+id = "fxaa"
+
+[[effects]]
+id = "bloom"
+strength = 0.4
+threshold = 0.8
+
+[[effects]]
+id = "sharpen"
+amount = 0.4
+threshold = 0.02
+
+[[effects]]
+id = "grade"
+contrast = 0.05
+saturation = 1.05
+
+[[effects]]
+id = "vignette"
+amount = 0.3

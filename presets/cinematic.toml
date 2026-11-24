@@ -1,0 +1,36 @@
+# cinematic: warmer, softer, filmic
+[[effects]]
+id = "bloom"
+strength = 0.7
+threshold = 0.65
+knee = 0.4
+radius = 6.0
+
+[[effects]]
+id = "grade"
+exposure = 0.05
+contrast = 0.12
+saturation = 1.15
+temperature = 0.25
+tint = 0.05
+gamma = 1.05
+
+[[effects]]
+id = "chromatic_aberration"
+strength = 0.35
+
+[[effects]]
+id = "vignette"
+amount = 0.7
+inner = 0.3
+softness = 0.7
+
+[[effects]]
+id = "grain"
+strength = 0.12
+seed = 42.0
+
+[[effects]]
+id = "scanlines"
+enabled = false
+amount = 0.1

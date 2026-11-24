@@ -1,0 +1,17 @@
+# competitive: clarity boost, minimal latency, no darkening
+[[effects]]
+id = "fxaa"
+subpixel = 0.5
+
+[[effects]]
+id = "sharpen"
+amount = 0.8
+radius = 1.0
+threshold = 0.05
+
+[[effects]]
+id = "grade"
+contrast = 0.08
+saturation = 1.1
+gamma = 0.98
+brightness = 0.02

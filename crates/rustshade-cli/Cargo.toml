@@ -1,0 +1,17 @@
+[package]
+name = "rustshade-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Command line interface for rustshade"
+
+[[bin]]
+name = "rustshade"
+path = "src/main.rs"
+
+[dependencies]
+rustshade-core = { workspace = true }
+rustshade-fx = { workspace = true }
+rustshade-gpu = { workspace = true }
+clap = { workspace = true }
+image = { workspace = true }

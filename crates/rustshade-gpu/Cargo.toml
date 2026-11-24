@@ -1,0 +1,17 @@
+[package]
+name = "rustshade-gpu"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "wgpu-based GPU post-processing backend for rustshade"
+
+[dependencies]
+rustshade-core = { workspace = true }
+rustshade-fx = { workspace = true }
+wgpu = "25"
+image = { workspace = true }
+thiserror = { workspace = true }
+pollster = "0.4"
+
+[dev-dependencies]
+toml = { workspace = true }

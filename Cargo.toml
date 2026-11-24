@@ -1,0 +1,28 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/rustshade-core",
+    "crates/rustshade-fx",
+    "crates/rustshade-gpu",
+    "crates/rustshade-cli",
+    "crates/rustshade-hook",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[workspace.dependencies]
+rustshade-core = { path = "crates/rustshade-core" }
+rustshade-fx = { path = "crates/rustshade-fx" }
+rustshade-gpu = { path = "crates/rustshade-gpu" }
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+thiserror = "2"
+image = { version = "0.25", default-features = false, features = ["png"] }
+clap = { version = "4", features = ["derive"] }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
