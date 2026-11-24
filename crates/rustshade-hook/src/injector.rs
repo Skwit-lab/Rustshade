@@ -4,8 +4,8 @@
 use std::ffi::OsStr;
 use std::os::windows::ffi::OsStrExt;
 
-use windows::core::{Error, HSTRING, PCWSTR};
-use windows::Win32::Foundation::{CloseHandle, HANDLE, WAIT_OBJECT_0};
+use windows::core::{w, Error};
+use windows::Win32::Foundation::{CloseHandle, E_FAIL, HANDLE};
 use windows::Win32::System::Diagnostics::ToolHelp::{
     CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W, TH32CS_SNAPPROCESS,
 };
@@ -116,16 +116,14 @@ impl Injector {
                 Some(&mut written),
             )?;
 
-            let kernel32 = GetModuleHandleW(PCWSTR::from(&HSTRING::from("kernel32.dll")))?;
+            let kernel32 = GetModuleHandleW(w!("kernel32.dll"))?;
             let load_library = windows::Win32::System::LibraryLoader::GetProcAddress(
                 kernel32,
                 windows::core::PCSTR::from_raw(b"LoadLibraryW\0".as_ptr()),
             );
             let Some(load_library) = load_library else {
-                VirtualFreeEx(self.process, remote, 0, MEM_RELEASE);
-                return Err(Error::from_hresult(
-                    windows::Win32::Foundation::E_FAIL.to_hresult(),
-                ));
+                let _ = VirtualFreeEx(self.process, remote, 0, MEM_RELEASE);
+                return Err(Error::from_hresult(E_FAIL));
             };
 
             let thread = CreateRemoteThread(
@@ -141,12 +139,10 @@ impl Injector {
             let mut code = 0u32;
             let _ = GetExitCodeThread(thread, &mut code);
             let _ = CloseHandle(thread);
-            VirtualFreeEx(self.process, remote, 0, MEM_RELEASE);
+            let _ = VirtualFreeEx(self.process, remote, 0, MEM_RELEASE);
 
             if code == 0 {
-                return Err(Error::from_hresult(
-                    windows::Win32::Foundation::E_FAIL.to_hresult(),
-                ));
+                return Err(Error::from_hresult(E_FAIL));
             }
             Ok(())
         }

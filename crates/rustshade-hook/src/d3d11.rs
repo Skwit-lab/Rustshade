@@ -12,8 +12,7 @@ use std::os::windows::ffi::OsStrExt;
 use std::sync::atomic::{AtomicBool, AtomicPtr, Ordering};
 use std::sync::OnceLock;
 
-use windows::core::{PCSTR, PCWSTR};
-use windows::Win32::Foundation::HRESULT;
+use windows::core::{HRESULT, PCSTR, PCWSTR};
 use windows::Win32::System::LibraryLoader::{GetModuleHandleW, GetProcAddress};
 use windows::Win32::System::Memory::{VirtualProtect, PAGE_PROTECTION_FLAGS, PAGE_READWRITE};
 
@@ -62,6 +61,7 @@ type D3D11CreateDeviceAndSwapChainFn = unsafe extern "system" fn(
     flags: u32,
     feature_levels: *const u32,
     feature_level_count: u32,
+    sdk_version: u32,
     swap_chain_desc: *const SwapChainDesc,
     out_swap_chain: *mut *mut c_void,
     out_device: *mut *mut c_void,
@@ -69,7 +69,8 @@ type D3D11CreateDeviceAndSwapChainFn = unsafe extern "system" fn(
     out_context: *mut *mut c_void,
 ) -> HRESULT;
 
-type PresentFn = unsafe extern "system" fn(swap: *mut c_void, sync_interval: u32, flags: u32) -> HRESULT;
+type PresentFn =
+    unsafe extern "system" fn(swap: *mut c_void, sync_interval: u32, flags: u32) -> HRESULT;
 
 extern "system" fn hooked_present(swap: *mut c_void, sync_interval: u32, flags: u32) -> HRESULT {
     // Post-processing pass chain against the backbuffer will be executed
@@ -80,7 +81,10 @@ extern "system" fn hooked_present(swap: *mut c_void, sync_interval: u32, flags: 
 }
 
 unsafe fn wide(s: &str) -> Vec<u16> {
-    std::ffi::OsStr::new(s).encode_wide().chain(std::iter::once(0)).collect()
+    std::ffi::OsStr::new(s)
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect()
 }
 
 /// Creates a dummy D3D11 device + swap chain and returns the address of the
@@ -131,6 +135,7 @@ unsafe fn load_present_slot() -> Result<*mut *mut c_void, HRESULT> {
         0,
         std::ptr::null(),
         0,
+        D3D11_SDK_VERSION,
         &desc,
         &mut swap,
         &mut device,
@@ -142,7 +147,7 @@ unsafe fn load_present_slot() -> Result<*mut *mut c_void, HRESULT> {
     }
 
     let vtable = *(swap as *mut *mut c_void);
-    Ok(vtable.add(PRESENT_VTABLE_SLOT))
+    Ok(vtable.add(PRESENT_VTABLE_SLOT).cast::<*mut c_void>())
 }
 
 /// Patches the shared swap chain vtable; call from `DllMain`.
@@ -163,7 +168,7 @@ pub unsafe fn install() -> Result<(), HRESULT> {
     VirtualProtect(
         slot.cast::<c_void>(),
         slot_bytes,
-        PAGE_PROTECTION_FLAGS(0x04), // PAGE_READWRITE
+        PAGE_READWRITE,
         &mut old_protect,
     )
     .map_err(|_| HRESULT(-4i32))?;
@@ -184,7 +189,9 @@ pub unsafe fn uninstall() {
     if !INSTALLED.swap(false, Ordering::AcqRel) {
         return;
     }
-    let slot = PRESENT_SLOT_ADDR.load(Ordering::Acquire).cast::<*mut c_void>();
+    let slot = PRESENT_SLOT_ADDR
+        .load(Ordering::Acquire)
+        .cast::<*mut c_void>();
     let original = ORIGINAL_PRESENT.swap(std::ptr::null_mut(), Ordering::AcqRel);
     if !slot.is_null() && !original.is_null() {
         let mut old_protect = PAGE_PROTECTION_FLAGS(0);
@@ -192,7 +199,7 @@ pub unsafe fn uninstall() {
         if VirtualProtect(
             slot.cast::<c_void>(),
             slot_bytes,
-            PAGE_PROTECTION_FLAGS(0x04),
+            PAGE_READWRITE,
             &mut old_protect,
         )
         .is_ok()

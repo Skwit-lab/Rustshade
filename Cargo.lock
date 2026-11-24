@@ -925,6 +925,7 @@ dependencies = [
 name = "rustshade-hook"
 version = "0.1.0"
 dependencies = [
+ "rustshade-core",
  "windows",
 ]
 

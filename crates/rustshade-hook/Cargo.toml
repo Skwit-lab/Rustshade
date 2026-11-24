@@ -9,11 +9,14 @@ description = "Injection-based D3D11 hook (experimental, Windows only)"
 crate-type = ["rlib", "cdylib"]
 
 [target.'cfg(windows)'.dependencies]
+rustshade-core = { workspace = true }
 windows = { version = "0.58", features = [
     "Win32_Foundation",
     "Win32_System_LibraryLoader",
     "Win32_System_Threading",
+    "Win32_Security",
     "Win32_System_Memory",
+    "Win32_System_Diagnostics_Debug",
     "Win32_System_Diagnostics_ToolHelp",
     "Win32_System_SystemServices",
     "Win32_Graphics_Direct3D11",
