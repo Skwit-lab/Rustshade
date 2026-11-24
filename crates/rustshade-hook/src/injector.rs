@@ -119,18 +119,20 @@ impl Injector {
             let kernel32 = GetModuleHandleW(w!("kernel32.dll"))?;
             let load_library = windows::Win32::System::LibraryLoader::GetProcAddress(
                 kernel32,
-                windows::core::PCSTR::from_raw(b"LoadLibraryW\0".as_ptr()),
+                windows::core::PCSTR::from_raw(c"LoadLibraryW".as_ptr().cast()),
             );
             let Some(load_library) = load_library else {
                 let _ = VirtualFreeEx(self.process, remote, 0, MEM_RELEASE);
                 return Err(Error::from_hresult(E_FAIL));
             };
 
+            let load_library_start: unsafe extern "system" fn(*mut std::ffi::c_void) -> u32 =
+                std::mem::transmute(load_library);
             let thread = CreateRemoteThread(
                 self.process,
                 None,
                 0,
-                Some(std::mem::transmute(load_library)),
+                Some(load_library_start),
                 Some(remote),
                 0,
                 None,

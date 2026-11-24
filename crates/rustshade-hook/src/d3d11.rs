@@ -17,8 +17,6 @@ use windows::Win32::System::LibraryLoader::{GetModuleHandleW, GetProcAddress};
 use windows::Win32::System::Memory::{VirtualProtect, PAGE_PROTECTION_FLAGS, PAGE_READWRITE};
 
 const PRESENT_VTABLE_SLOT: usize = 8;
-const DLL_PROCESS_ATTACH: u32 = 1;
-const DLL_PROCESS_DETACH: u32 = 0;
 const D3D_DRIVER_TYPE_HARDWARE: u32 = 1;
 const D3D11_SDK_VERSION: u32 = 7;
 
@@ -99,7 +97,7 @@ unsafe fn load_present_slot() -> Result<*mut *mut c_void, HRESULT> {
 
     let Some(create_ptr) = GetProcAddress(
         module,
-        PCSTR::from_raw(b"D3D11CreateDeviceAndSwapChain\0".as_ptr()),
+        PCSTR::from_raw(c"D3D11CreateDeviceAndSwapChain".as_ptr().cast()),
     ) else {
         return Err(HRESULT(-2i32));
     };
@@ -146,11 +144,16 @@ unsafe fn load_present_slot() -> Result<*mut *mut c_void, HRESULT> {
         return Err(hr);
     }
 
-    let vtable = *(swap as *mut *mut c_void);
-    Ok(vtable.add(PRESENT_VTABLE_SLOT).cast::<*mut c_void>())
+    let vtable = *(swap as *mut *mut c_void) as *mut *mut c_void;
+    Ok(vtable.add(PRESENT_VTABLE_SLOT))
 }
 
 /// Patches the shared swap chain vtable; call from `DllMain`.
+///
+/// # Safety
+///
+/// Must only run inside the target process while `d3d11.dll` is loaded, and
+/// must not race with another thread calling `install`/`uninstall`.
 pub unsafe fn install() -> Result<(), HRESULT> {
     if INSTALLED.swap(true, Ordering::AcqRel) {
         return Ok(());
@@ -185,6 +188,12 @@ pub unsafe fn install() -> Result<(), HRESULT> {
     Ok(())
 }
 
+/// Restores the original `Present` vtable entry.
+///
+/// # Safety
+///
+/// Must only run in the process where `install` succeeded, and must not race
+/// with a frame inside `hooked_present`.
 pub unsafe fn uninstall() {
     if !INSTALLED.swap(false, Ordering::AcqRel) {
         return;
@@ -212,23 +221,5 @@ pub unsafe fn uninstall() {
                 &mut old_protect,
             );
         }
-    }
-}
-
-/// Real `DllMain` body, called by the exported stub in lib.rs.
-pub unsafe fn dll_main_impl(_hinstance: *mut u8, reason: u32) -> i32 {
-    match reason {
-        DLL_PROCESS_ATTACH => {
-            if install().is_err() {
-                0
-            } else {
-                1
-            }
-        }
-        DLL_PROCESS_DETACH => {
-            uninstall();
-            1
-        }
-        _ => 1,
     }
 }
